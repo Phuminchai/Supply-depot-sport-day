@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8fafc">
+  <title>คลังพัสดุประจำสี | Sports Day</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: "Leelawadee UI", Tahoma, sans-serif; }
+    button, input, select { font: inherit; }
+    .nav-active { background: #fff7ed; color: #c2410c; }
+    .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+  <div class="mx-auto min-h-screen max-w-6xl">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div class="flex items-center justify-between px-4 py-3 sm:px-6">
+        <div class="flex items-center gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500 text-xl text-white">🏅</div>
+          <div><h1 class="text-lg font-extrabold leading-tight">คลังพัสดุประจำสี</h1><p class="text-xs text-slate-500">ระบบยืม-คืน · กีฬาสีโรงเรียน</p></div>
+        </div>
+        <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">● บันทึกในเครื่อง</span>
+      </div>
+      <nav class="flex gap-1 overflow-x-auto px-3 pb-2 sm:px-5" aria-label="เมนูหลัก">
+        <button data-page="inventory" class="nav-btn nav-active shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold">📦 ภาพรวมคลัง</button>
+        <button data-page="checkout" class="nav-btn shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">➕ เบิกของ</button>
+        <button data-page="loans" class="nav-btn shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">🔄 กำลังยืม <span id="loan-count" class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs">0</span></button>
+        <button data-page="damage" class="nav-btn shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500">🛠️ ของชำรุด</button>
+      </nav>
+    </header>
+
+    <main class="px-4 py-5 sm:px-6 sm:py-7">
+      <section id="page-inventory" class="page">
+        <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div><p class="text-sm font-bold text-orange-600">ภาพรวมคลัง</p><h2 class="mt-1 text-2xl font-extrabold">อุปกรณ์ประจำสี</h2><p class="mt-1 text-sm text-slate-500">เช็กจำนวนของพร้อมใช้ได้ในพริบตา</p></div>
+          <button id="open-add" class="rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-orange-600">＋ เพิ่มอุปกรณ์</button>
+        </div>
+        <div class="mb-6 grid grid-cols-3 gap-3">
+          <article class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:p-5"><p class="text-xs font-semibold text-slate-500 sm:text-sm">ทั้งหมด</p><p id="stat-total" class="mt-2 text-2xl font-extrabold sm:text-3xl">0</p><p class="text-xs text-slate-400">ชิ้น</p></article>
+          <article class="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 shadow-sm sm:p-5"><p class="text-xs font-semibold text-emerald-700 sm:text-sm">พร้อมใช้</p><p id="stat-available" class="mt-2 text-2xl font-extrabold text-emerald-700 sm:text-3xl">0</p><p class="text-xs text-emerald-600">ชิ้น</p></article>
+          <article class="rounded-2xl border border-orange-100 bg-orange-50 p-3 shadow-sm sm:p-5"><p class="text-xs font-semibold text-orange-700 sm:text-sm">กำลังยืม</p><p id="stat-loans" class="mt-2 text-2xl font-extrabold text-orange-700 sm:text-3xl">0</p><p class="text-xs text-orange-600">ชิ้น</p></article>
+        </div>
+        <div class="mb-3 flex items-center justify-between"><h3 class="font-extrabold">รายการอุปกรณ์</h3><span id="item-count" class="text-xs text-slate-500"></span></div>
+        <div id="inventory-list" class="grid gap-3 sm:grid-cols-2"></div>
+      </section>
+
+      <section id="page-checkout" class="page hidden">
+        <div class="mb-5"><p class="text-sm font-bold text-orange-600">จ่ายของออกจากคลัง</p><h2 class="mt-1 text-2xl font-extrabold">เบิกของด่วน</h2><p class="mt-1 text-sm text-slate-500">ระบุผู้รับผิดชอบและจำนวน ระบบจะตัดยอดพร้อมใช้ทันที</p></div>
+        <form id="checkout-form" class="max-w-xl space-y-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+          <label class="block text-sm font-bold">อุปกรณ์<select id="checkout-item" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-base font-normal outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"></select></label>
+          <div id="available-hint" class="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"></div>
+          <label class="block text-sm font-bold">จำนวนที่เบิก<input id="checkout-qty" type="number" min="1" step="1" required placeholder="เช่น 2" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 text-base font-normal outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"></label>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block text-sm font-bold">ชื่อผู้รับผิดชอบ<input id="borrower-name" required maxlength="60" placeholder="เช่น สมชาย" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 text-base font-normal outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"></label>
+              <label class="block text-sm font-bold">ห้อง<input id="borrower-room" required maxlength="30" placeholder="เช่น ม.5/2" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 text-base font-normal outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"></label>
+          </div>
+            <label class="block text-sm font-bold">หมายเหตุการยืม <span class="font-normal text-slate-400">(ไม่บังคับ)</span><textarea id="borrower-note" maxlength="160" rows="2" placeholder="เช่น เอาไปใช้ที่สนามฟุตบอลช่วงบ่าย" class="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-base font-normal outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"></textarea></label>
+          <button type="submit" class="w-full rounded-xl bg-orange-500 px-5 py-4 text-base font-extrabold text-white shadow-sm hover:bg-orange-600 active:scale-[.99]">ยืนยันการเบิก</button>
+        </form>
+      </section>
+
+      <section id="page-loans" class="page hidden">
+        <div class="mb-5"><p class="text-sm font-bold text-orange-600">ติดตามการยืม</p><h2 class="mt-1 text-2xl font-extrabold">รายการที่ยังไม่คืน</h2><p class="mt-1 text-sm text-slate-500">รับคืนบางส่วนหรือทั้งหมด และบันทึกของชำรุดได้ในขั้นตอนเดียว</p></div>
+        <div id="loans-list" class="grid gap-3 sm:grid-cols-2"></div>
+      </section>
+
+      <section id="page-damage" class="page hidden">
+        <div class="mb-5"><p class="text-sm font-bold text-rose-600">แยกบันทึกจากของสูญหาย</p><h2 class="mt-1 text-2xl font-extrabold">บันทึกของชำรุด</h2><p class="mt-1 text-sm text-slate-500">ของที่ชำรุดจะไม่ถูกนับเป็นของพร้อมใช้</p></div>
+        <form id="damage-form" class="mb-5 max-w-xl space-y-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+          <h3 class="font-extrabold">เพิ่มรายการชำรุด</h3>
+          <label class="block text-sm font-bold">อุปกรณ์<select id="damage-item" required class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-base font-normal outline-none focus:border-orange-500"></select></label>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block text-sm font-bold">จำนวน<input id="damage-qty" type="number" min="1" step="1" required placeholder="เช่น 1" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 text-base font-normal outline-none focus:border-rose-500"></label>
+            <label class="block text-sm font-bold">สาเหตุ / รายละเอียด<input id="damage-note" required maxlength="120" placeholder="เช่น ลูกบอลแตก" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 text-base font-normal outline-none focus:border-rose-500"></label>
+          </div>
+          <button type="submit" class="w-full rounded-xl bg-rose-500 px-5 py-4 font-extrabold text-white hover:bg-rose-600">บันทึกของชำรุด</button>
+        </form>
+        <h3 class="mb-3 font-extrabold">ประวัติของชำรุด</h3><div id="damage-list" class="grid gap-3 sm:grid-cols-2"></div>
+      </section>
+    </main>
+    <footer class="safe-bottom px-4 pb-6 text-center text-xs text-slate-400">ข้อมูลจัดเก็บในเบราว์เซอร์เครื่องนี้ · ควรใช้เครื่องเดิมในการทำรายการ</footer>
+  </div>
+
+  <dialog id="add-dialog" class="w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/40">
+    <form id="add-form" class="space-y-4 p-5">
+      <div class="flex items-start justify-between"><div><p class="text-sm font-bold text-orange-600">เพิ่มเข้าคลัง</p><h2 class="mt-1 text-xl font-extrabold">อุปกรณ์ใหม่</h2></div><button type="button" class="close-dialog rounded-lg px-3 py-1 text-xl text-slate-400" aria-label="ปิด">×</button></div>
+      <label class="block text-sm font-bold">ชื่ออุปกรณ์<input id="new-item-name" required maxlength="60" placeholder="เช่น ลูกฟุตบอล" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-orange-500"></label>
+      <label class="block text-sm font-bold">จำนวนเริ่มต้น<input id="new-item-qty" type="number" min="1" step="1" required placeholder="เช่น 10" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-orange-500"></label>
+      <label class="block text-sm font-bold">หมายเหตุ <span class="font-normal text-slate-400">(ไม่บังคับ)</span><textarea id="new-item-note" maxlength="160" rows="2" placeholder="เช่น เก็บไว้ที่ห้องพัสดุ" class="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-orange-500"></textarea></label>
+      <button class="w-full rounded-xl bg-orange-500 px-5 py-3.5 font-extrabold text-white">เพิ่มอุปกรณ์</button>
+    </form>
+  </dialog>
+
+  <dialog id="return-dialog" class="w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/40">
+    <form id="return-form" class="space-y-4 p-5">
+      <div class="flex items-start justify-between"><div><p class="text-sm font-bold text-emerald-600">รับคืนเข้าคลัง</p><h2 id="return-title" class="mt-1 text-xl font-extrabold">รับคืน</h2></div><button type="button" class="close-dialog rounded-lg px-3 py-1 text-xl text-slate-400" aria-label="ปิด">×</button></div>
+      <p id="return-context" class="text-sm text-slate-500"></p>
+      <label class="block text-sm font-bold">จำนวนที่ชำรุด <span class="font-normal text-slate-500">(นอกนั้นจะคืนเป็นของพร้อมใช้)</span><input id="return-damaged-qty" type="number" min="0" step="1" value="0" required class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 font-normal outline-none focus:border-rose-500"></label>
+      <label class="block text-sm font-bold">รายละเอียดของชำรุด (ถ้ามี)<input id="return-damage-note" maxlength="120" placeholder="เช่น เชือกขาด" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 font-normal outline-none focus:border-rose-500"></label>
+      <button class="w-full rounded-xl bg-emerald-600 px-5 py-3.5 font-extrabold text-white hover:bg-emerald-700">ยืนยันรับคืน</button>
+    </form>
+  </dialog>
+  <dialog id="note-dialog" class="w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/40">
+    <form id="note-form" class="space-y-4 p-5">
+      <div class="flex items-start justify-between"><div><p class="text-sm font-bold text-orange-600">รายละเอียดอุปกรณ์</p><h2 id="note-title" class="mt-1 text-xl font-extrabold">หมายเหตุ</h2></div><button type="button" class="close-dialog rounded-lg px-3 py-1 text-xl text-slate-400" aria-label="ปิด">×</button></div>
+      <label class="block text-sm font-bold">หมายเหตุ<textarea id="item-note" maxlength="160" rows="3" placeholder="เช่น เสื้อเบอร์ M–XL · เก็บที่ห้องพัสดุ" class="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-orange-500"></textarea></label>
+      <button class="w-full rounded-xl bg-orange-500 px-5 py-3.5 font-extrabold text-white">บันทึกหมายเหตุ</button>
+    </form>
+  </dialog>
+  <div id="toast" class="fixed bottom-5 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg" role="status"></div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "sports-day-inventory-v1";
+      const initialItems = [
+        { id: "apron", name: "เอี๊ยม", available: 20, damaged: 0 },
+        { id: "football", name: "ลูกฟุตบอล", available: 6, damaged: 0 },
+        { id: "cone", name: "กรวยยาง", available: 15, damaged: 0 },
+        { id: "whistle", name: "นกหวีด", available: 10, damaged: 0 },
+        { id: "tug-rope", name: "เชือกชักคะเย่อ", available: 2, damaged: 0 }
+      ];
+      const $ = selector => document.querySelector(selector);
+      let state;
+      let returnLoanId = null;
+      let noteItemId = null;
+      let toastTimer;
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        state = saved ? JSON.parse(saved) : { items: initialItems.map(item => ({ ...item })), loans: [], damage: [] };
+        if (!state || !Array.isArray(state.items) || !Array.isArray(state.loans) || !Array.isArray(state.damage)) throw new Error("ข้อมูลคลังไม่ถูกต้อง");
+      } catch (error) {
+        console.error("ไม่สามารถอ่านข้อมูลคลังจากเครื่องได้", error);
+        state = { items: initialItems.map(item => ({ ...item })), loans: [], damage: [] };
+      }
+      state.items.forEach(item => { if (typeof item.note !== "string") item.note = ""; });
+      state.loans.forEach(loan => { if (typeof loan.note !== "string") loan.note = ""; });
+
+      function save() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+        catch (error) {
+          console.error("ไม่สามารถบันทึกข้อมูลคลังได้", error);
+          showToast("บันทึกไม่สำเร็จ กรุณาตรวจสอบพื้นที่จัดเก็บของเบราว์เซอร์");
+        }
+      }
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+      }
+      function showToast(message) {
+        const toast = $("#toast");
+        toast.textContent = message;
+        toast.classList.remove("hidden");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.add("hidden"), 2600);
+      }
+      function activeCount(itemId) {
+        return state.loans.filter(loan => loan.itemId === itemId).reduce((sum, loan) => sum + loan.qty, 0);
+      }
+      function itemName(id, fallback = "อุปกรณ์ที่ไม่พบ") {
+        const item = state.items.find(entry => entry.id === id);
+        return item ? item.name : fallback;
+      }
+      function emptyState(title, message) {
+        return `<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center sm:col-span-2"><div class="text-3xl">📋</div><p class="mt-2 font-bold">${title}</p><p class="mt-1 text-sm text-slate-500">${message}</p></div>`;
+      }
+      function updateSelects() {
+        const checkoutValue = $("#checkout-item").value;
+        const damageValue = $("#damage-item").value;
+        const options = state.items.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (พร้อมใช้ ${item.available})</option>`).join("");
+        $("#checkout-item").innerHTML = options || '<option value="">ยังไม่มีอุปกรณ์</option>';
+        $("#damage-item").innerHTML = options || '<option value="">ยังไม่มีอุปกรณ์</option>';
+        if (state.items.some(item => item.id === checkoutValue)) $("#checkout-item").value = checkoutValue;
+        if (state.items.some(item => item.id === damageValue)) $("#damage-item").value = damageValue;
+        const canCheckOut = state.items.some(item => item.available > 0);
+        const canReportDamage = state.items.some(item => item.available > 0);
+        $("#checkout-form button[type=submit]").disabled = !canCheckOut;
+        $("#checkout-form button[type=submit]").classList.toggle("opacity-50", !canCheckOut);
+        $("#damage-form button[type=submit]").disabled = !canReportDamage;
+        $("#damage-form button[type=submit]").classList.toggle("opacity-50", !canReportDamage);
+      }
+      function selectedAvailable() {
+        const item = state.items.find(entry => entry.id === $("#checkout-item").value);
+        return item ? item.available : 0;
+      }
+      function render() {
+        const total = state.items.reduce((sum, item) => sum + item.available + item.damaged + activeCount(item.id), 0);
+        const available = state.items.reduce((sum, item) => sum + item.available, 0);
+        const inUse = state.loans.reduce((sum, loan) => sum + loan.qty, 0);
+        $("#stat-total").textContent = total;
+        $("#stat-available").textContent = available;
+        $("#stat-loans").textContent = inUse;
+        $("#loan-count").textContent = inUse;
+        $("#item-count").textContent = state.items.length + " รายการ";
+        $("#inventory-list").innerHTML = state.items.length ? state.items.map(item => {
+          const loaned = activeCount(item.id);
+          const itemTotal = item.available + item.damaged + loaned;
+          const percentage = itemTotal ? Math.max(4, Math.round(item.available / itemTotal * 100)) : 0;
+          return `<article class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div class="flex items-start justify-between gap-3"><div><h4 class="font-extrabold">${escapeHtml(item.name)}</h4><p class="mt-1 text-xs text-slate-500">ยืมอยู่ ${loaned} · ชำรุด ${item.damaged}</p></div><span class="rounded-xl bg-emerald-50 px-3 py-2 text-right"><strong class="block text-xl text-emerald-700">${item.available}</strong><span class="text-[11px] text-emerald-700">พร้อมใช้</span></span></div>
+            <p class="mt-3 min-h-5 break-words text-sm ${item.note ? "text-slate-600" : "text-slate-400"}">${item.note ? escapeHtml(item.note) : "ยังไม่มีหมายเหตุ"}</p>
+            <div class="mt-3 flex gap-2"><button data-note="${escapeHtml(item.id)}" class="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">✎ หมายเหตุ</button><button data-delete="${escapeHtml(item.id)}" class="rounded-xl border border-rose-200 px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50">ลบ</button></div>
+            <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-emerald-400" style="width:${percentage}%"></div></div><p class="mt-2 text-xs text-slate-400">จำนวนรวม ${itemTotal} ชิ้น</p></article>`;
+        }).join("") : emptyState("ยังไม่มีอุปกรณ์", "กด “เพิ่มอุปกรณ์” เพื่อเริ่มจัดการคลัง");
+        updateSelects();
+        $("#available-hint").textContent = selectedAvailable() + " ชิ้นพร้อมเบิก";
+        $("#loans-list").innerHTML = state.loans.length ? state.loans.map(loan => `<article class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3"><div><h3 class="font-extrabold">${escapeHtml(itemName(loan.itemId))}</h3><p class="mt-1 text-sm text-slate-600">${escapeHtml(loan.name)} · ${escapeHtml(loan.room)}</p>${loan.note ? `<p class="mt-2 whitespace-pre-wrap break-words rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">หมายเหตุ: ${escapeHtml(loan.note)}</p>` : ""}<p class="mt-1 text-xs text-slate-400">เบิกเมื่อ ${new Date(loan.createdAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</p></div><span class="rounded-xl bg-orange-50 px-3 py-2 text-center"><strong class="block text-xl text-orange-700">${loan.qty}</strong><span class="text-[11px] text-orange-700">ชิ้น</span></span></div>
+          <button data-return="${escapeHtml(loan.id)}" class="mt-4 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 font-bold text-emerald-700 hover:bg-emerald-100">รับคืน</button></article>`).join("") : emptyState("ไม่มีรายการค้างคืน", "เมื่อมีการเบิกของ รายการจะแสดงที่นี่");
+        $("#damage-list").innerHTML = state.damage.length ? [...state.damage].reverse().map(log => `<article class="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3"><div><h3 class="font-extrabold">${escapeHtml(itemName(log.itemId, log.itemName))}</h3><p class="mt-1 text-sm text-slate-600">${escapeHtml(log.note)}</p><p class="mt-1 text-xs text-slate-400">${escapeHtml(log.source)} · ${new Date(log.createdAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</p></div><span class="rounded-xl bg-rose-50 px-3 py-2 text-center"><strong class="block text-xl text-rose-700">${log.qty}</strong><span class="text-[11px] text-rose-700">ชิ้น</span></span></div></article>`).join("") : emptyState("ยังไม่มีรายการชำรุด", "บันทึกของเสียหายเพื่อแยกออกจากยอดพร้อมใช้");
+      }
+      function openPage(page) {
+        document.querySelectorAll(".page").forEach(section => section.classList.toggle("hidden", section.id !== "page-" + page));
+        document.querySelectorAll(".nav-btn").forEach(button => {
+          const active = button.dataset.page === page;
+          button.classList.toggle("nav-active", active);
+          button.classList.toggle("text-slate-500", !active);
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      document.querySelectorAll(".nav-btn").forEach(button => button.addEventListener("click", () => openPage(button.dataset.page)));
+      $("#checkout-item").addEventListener("change", () => { $("#available-hint").textContent = selectedAvailable() + " ชิ้นพร้อมเบิก"; });
+      $("#open-add").addEventListener("click", () => $("#add-dialog").showModal());
+      document.querySelectorAll(".close-dialog").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
+      $("#inventory-list").addEventListener("click", event => {
+        const noteButton = event.target.closest("[data-note]");
+        if (noteButton) {
+          const item = state.items.find(entry => entry.id === noteButton.dataset.note);
+          if (!item) return;
+          noteItemId = item.id;
+          $("#note-title").textContent = "หมายเหตุ: " + item.name;
+          $("#item-note").value = item.note;
+          $("#note-dialog").showModal();
+          return;
+        }
+        const deleteButton = event.target.closest("[data-delete]");
+        if (!deleteButton) return;
+        const item = state.items.find(entry => entry.id === deleteButton.dataset.delete);
+        if (!item) return;
+        if (activeCount(item.id) > 0) return showToast("ยังลบไม่ได้ เพราะมีอุปกรณ์รายการนี้กำลังถูกยืม");
+        if (!window.confirm(`ยืนยันลบ “${item.name}” ออกจากคลังหรือไม่?`)) return;
+        state.damage.forEach(log => { if (log.itemId === item.id) log.itemName = item.name; });
+        state.items = state.items.filter(entry => entry.id !== item.id);
+        save(); render(); showToast("ลบอุปกรณ์ออกจากคลังแล้ว");
+      });
+      $("#note-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const item = state.items.find(entry => entry.id === noteItemId);
+        if (!item) return showToast("ไม่พบอุปกรณ์รายการนี้");
+        item.note = $("#item-note").value.trim();
+        save(); render(); $("#note-dialog").close(); showToast("บันทึกหมายเหตุแล้ว");
+      });
+      $("#add-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const name = $("#new-item-name").value.trim();
+        const qty = Number($("#new-item-qty").value);
+        const note = $("#new-item-note").value.trim();
+        if (!name || !Number.isSafeInteger(qty) || qty < 1) return showToast("กรุณากรอกชื่อและจำนวนให้ถูกต้อง");
+        const existing = state.items.find(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+        if (existing) {
+          existing.available += qty;
+          if (note) existing.note = note;
+        } else state.items.push({ id: "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), name, available: qty, damaged: 0, note });
+        save(); render(); event.target.reset(); $("#add-dialog").close(); showToast(existing ? "เพิ่มจำนวนอุปกรณ์ในคลังแล้ว" : "เพิ่มอุปกรณ์เข้าคลังแล้ว");
+      });
+      $("#checkout-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const item = state.items.find(entry => entry.id === $("#checkout-item").value);
+        const qty = Number($("#checkout-qty").value);
+        if (!item || !Number.isSafeInteger(qty) || qty < 1 || qty > item.available) return showToast("จำนวนไม่ถูกต้อง หรือของพร้อมใช้ไม่เพียงพอ");
+        state.loans.push({ id: "loan-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), itemId: item.id, qty, name: $("#borrower-name").value.trim(), room: $("#borrower-room").value.trim(), note: $("#borrower-note").value.trim(), createdAt: new Date().toISOString() });
+        item.available -= qty;
+        save(); render(); event.target.reset(); showToast("บันทึกการเบิกแล้ว"); openPage("loans");
+      });
+      $("#loans-list").addEventListener("click", event => {
+        const button = event.target.closest("[data-return]");
+        if (!button) return;
+        const loan = state.loans.find(entry => entry.id === button.dataset.return);
+        if (!loan) return;
+        returnLoanId = loan.id;
+        $("#return-title").textContent = "รับคืน " + itemName(loan.itemId);
+        $("#return-context").textContent = `${loan.name} · ${loan.room} · ยืมอยู่ ${loan.qty} ชิ้น`;
+        $("#return-damaged-qty").max = loan.qty;
+        $("#return-damaged-qty").value = "0";
+        $("#return-damage-note").value = "";
+        $("#return-dialog").showModal();
+      });
+      $("#return-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const loan = state.loans.find(entry => entry.id === returnLoanId);
+        if (!loan) return showToast("ไม่พบรายการยืมนี้");
+        const damagedQty = Number($("#return-damaged-qty").value);
+        const note = $("#return-damage-note").value.trim();
+        if (!Number.isSafeInteger(damagedQty) || damagedQty < 0 || damagedQty > loan.qty || (damagedQty > 0 && !note)) return showToast("ตรวจสอบจำนวนและรายละเอียดของชำรุด");
+        const item = state.items.find(entry => entry.id === loan.itemId);
+        if (item) { item.available += loan.qty - damagedQty; item.damaged += damagedQty; }
+        if (damagedQty > 0) state.damage.push({ id: "damage-" + Date.now(), itemId: loan.itemId, itemName: itemName(loan.itemId), qty: damagedQty, note, source: "รับคืนจาก " + loan.name, createdAt: new Date().toISOString() });
+        state.loans = state.loans.filter(entry => entry.id !== loan.id);
+        save(); render(); $("#return-dialog").close(); showToast(damagedQty ? "รับคืนแล้ว และแยกของชำรุดเรียบร้อย" : "รับคืนเข้าคลังแล้ว");
+      });
+      $("#damage-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const item = state.items.find(entry => entry.id === $("#damage-item").value);
+        const qty = Number($("#damage-qty").value);
+        const note = $("#damage-note").value.trim();
+        if (!item || !Number.isSafeInteger(qty) || qty < 1 || qty > item.available || !note) return showToast("จำนวนพร้อมใช้ไม่พอ หรือกรอกข้อมูลไม่ครบ");
+        item.available -= qty;
+        item.damaged += qty;
+        state.damage.push({ id: "damage-" + Date.now(), itemId: item.id, itemName: item.name, qty, note, source: "บันทึกจากคลัง", createdAt: new Date().toISOString() });
+        save(); render(); event.target.reset(); showToast("บันทึกของชำรุดแล้ว");
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>
